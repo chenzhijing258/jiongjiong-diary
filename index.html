@@ -472,20 +472,20 @@ async function bootData(){
 }
 
 async function refreshEntries(){
-  const [dr, lr] = await Promise.all([
-    db.collection('diaries').orderBy('date','asc').limit(100).get(),
-    db.collection('likes').limit(2000).get()
-  ]);
+  const dr = await db.collection('diaries').orderBy('date','asc').limit(100).get();
   entries = dr.data;
-  const counts = {}; const myDocs = {};
-  lr.data.forEach(l => {
-    counts[l.diaryId] = (counts[l.diaryId]||0)+1;
-    if(l._openid === uid) myDocs[l.diaryId] = l._id;
-  });
-  Object.assign(likeDocIds, myDocs);
-  likedSet = new Set(Object.keys(likeDocIds));
-  localStorage.setItem('ldi_'+uid, JSON.stringify(likeDocIds));
-  entries.forEach(e => { e.likes = counts[e._id]||0; });
+  try {
+    const lr = await db.collection('likes').limit(2000).get();
+    const counts = {}; const myDocs = {};
+    lr.data.forEach(l => {
+      counts[l.diaryId] = (counts[l.diaryId]||0)+1;
+      if(l._openid === uid) myDocs[l.diaryId] = l._id;
+    });
+    Object.assign(likeDocIds, myDocs);
+    likedSet = new Set(Object.keys(likeDocIds));
+    localStorage.setItem('ldi_'+uid, JSON.stringify(likeDocIds));
+    entries.forEach(e => { e.likes = counts[e._id]||0; });
+  } catch(e){ console.warn('likes load failed', e); }
   hideLoading(); renderFeed(); updateStats();
 }
 
