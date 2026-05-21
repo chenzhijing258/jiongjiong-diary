@@ -464,16 +464,31 @@ async function bootData(){
     const {total} = await db.collection('diaries').count();
     if(total === 0){
       showLoading('初始化数据…');
-      const migrated = await migrateFromV4();
-      if(!migrated) await doSeed();
+      try {
+        const migrated = await migrateFromV4();
+        if(!migrated) await doSeed();
+      } catch(seedErr){ console.error('seed error', seedErr); }
     }
     await refreshEntries();
-  } catch(e){ hideLoading(); console.error(e); }
+  } catch(e){
+    hideLoading();
+    document.getElementById('diary-feed').innerHTML=
+      `<div class="empty-state"><div class="empty-icon">⚠️</div><div>加载失败：${e.message||e}</div></div>`;
+    console.error('bootData error', e);
+  }
 }
 
 async function refreshEntries(){
-  const dr = await db.collection('diaries').orderBy('date','asc').limit(100).get();
-  entries = dr.data;
+  try {
+    const dr = await db.collection('diaries').limit(100).get();
+    entries = dr.data.sort((a,b)=>a.date>b.date?1:-1);
+  } catch(e){
+    hideLoading();
+    document.getElementById('diary-feed').innerHTML=
+      `<div class="empty-state"><div class="empty-icon">⚠️</div><div>读取日记失败：${e.message||e}</div></div>`;
+    console.error('diaries load error', e);
+    return;
+  }
   try {
     const lr = await db.collection('likes').limit(2000).get();
     const counts = {}; const myDocs = {};
